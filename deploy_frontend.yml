@@ -1,0 +1,67 @@
+---
+
+- name: run the playbook tasks on the aws
+  hosts: all
+  gather_facts: no
+  remote_user: ubuntu
+  become: yes
+  pre_tasks:
+    - name: 'install python2'
+      raw: apt-get -y install python
+      become: yes
+  vars:
+    git_repo: https://github.com/silaskenneth/eight.one.git
+    destination_folder: /home/ubuntu/eightone
+    nginx_docroot: /var/www/html/
+
+  tasks:
+    - name: Add the node repository
+      shell:
+        curl -sL https://deb.nodesource.com/setup_10.x | bash -
+
+    - name: Install nodejs
+      apt:
+        name: nodejs
+
+    - name: Symlink node
+      shell: 
+       sudo ln -s /usr/bin/nodejs /usr/local/bin/node
+
+    - name: Install packages and dependencies
+      apt:
+          update_cache: false
+          name:
+            - g++
+            - python-apt
+            - nginx
+            - git
+            - software-properties-common
+          state: present
+
+    - name: Start nginx
+      service:
+        name: nginx
+        state: started
+
+    - name: Clone git repo
+      git:
+        repo: "{{git_repo}}"
+        dest: "{{destination_folder}}"
+        clone: yes
+        update: yes
+
+    - name: install yarn package globally...
+      npm:
+        name: yarn
+        global: yes
+
+    - name: Build application
+      shell: |
+       cd {{destination_folder}}
+       sudo yarn install
+       sudo yarn build
+       sudo mv dist/index.html /var/www/html
+       sudo mv dist/bundle.js /var/www/html
+
+# Remaining work
+# -- Work on cleaning up the disk after working on the build of the project.
